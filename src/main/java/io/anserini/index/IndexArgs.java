@@ -17,6 +17,7 @@ package io.anserini.index;
  * limitations under the License.
  */
 
+import io.anserini.document.Collection;
 import org.kohsuke.args4j.Option;
 
 /**
@@ -35,10 +36,16 @@ public class IndexArgs {
   @Option(name = "-threads", metaVar = "[Number]", required = true, usage = "Number of Threads")
   int threads;
 
+  @Option(name = "-collection", required = true, usage = "Collection")
+  protected Collection collection;
+
   // optional arguments
 
   @Option(name = "-positions", usage = "Boolean switch to index positions")
   boolean positions = false;
+
+  @Option(name = "-docvectors", usage = "Boolean switch to store document vectors")
+  boolean docvectors = false;
 
   @Option(name = "-optimize", usage = "Boolean switch to optimize index (force merge)")
   boolean optimize = false;

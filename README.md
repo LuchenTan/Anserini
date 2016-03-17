@@ -12,24 +12,32 @@ mvn clean package appassembler:assemble
 Indexing:
 
 ```
-sh target/appassembler/bin/IndexGov2 -input /path/to/gov2/ \
- -index lucene-index.gov2.cnt -threads 32 -optimize
+nohup sh target/appassembler/bin/IndexWebCollection -collection GOV2 -input /path/to/gov2/ \
+ -index lucene-index.gov2 -threads 32 -positions -optimize 2> emptyDocIDs.txt 1> recordCounts.txt &
 ```
 
-The directory `/path/to/gov2/` should be the root directory of Gov2 collection, i.e., `ls /path/to/gov2/` should bring up a bunch of subdirectories, `GX000` to `GX272`.
+The directory `/path/to/gov2/` should be the root directory of Gov2 collection, i.e., `ls /path/to/gov2/` should bring up a bunch of subdirectories, `GX000` to `GX272`. The command above builds a standard positional index (`-positions`) that's optimized into a single segment (`-optimize`). If you also want to store document vectors (e.g., for query expansion), add the `-docvectors` option.
 
-After indexing is done, you should be able to peform a retrieval run:
+After indexing is done, you should be able to perform a retrieval run:
 
 ```
-sh target/appassembler/bin/SearchGov2 src/main/resources/topics-and-qrels/topics.701-750.txt \
- src/main/resources/topics-and-qrels/qrels.701-750.txt run.701-750.txt lucene-index.gov2.cnt/
+sh target/appassembler/bin/SearchWebCollection -collection GOV2 -index lucene-index.gov2.vec \
+  -topics src/main/resources/topics-and-qrels/topics.701-750.txt -output run.gov2.701-750.bm25.txt -bm25
 ```
 
 A copy of `trec_eval` is included in `eval/`. Unpack and compile it. Then you can evaluate the runs:
 
 ```
-eval/trec_eval.9.0/trec_eval src/main/resources/topics-and-qrels/qrels.701-750.txt run.701-750.txt
+eval/trec_eval.9.0/trec_eval src/main/resources/topics-and-qrels/qrels.701-750.txt run.gov2.701-750.bm25.txt
 ```
+
+With the topics and qrels in `src/main/resources/topics-and-qrels/`, you should be able to replicate the following results:
+
+                                                                                        | MAP    |  P30
+----------------------------------------------------------------------------------------|--------|-------
+[TREC 2004 Terabyte Track: Topics 701-750](http://trec.nist.gov/data/terabyte04.html)   | 0.2673 | 0.4850
+[TREC 2005 Terabyte Track: Topics 751-800](http://trec.nist.gov/data/terabyte05.html)   | 0.3365 | 0.5520
+[TREC 2006 Terabyte Track: Topics 801-850](http://trec.nist.gov/data/terabyte06.html)   | 0.3053 | 0.4913
 
 
 ### Experiments on ClueWeb09 (Category B)
@@ -37,30 +45,63 @@ eval/trec_eval.9.0/trec_eval src/main/resources/topics-and-qrels/qrels.701-750.t
 Indexing:
 
 ```
-sh target/appassembler/bin/IndexClueWeb09b -input /path/to/cw09b/ \
+sh target/appassembler/bin/IndexWebCollection -collection CW09 -input /path/to/cw09/ClueWeb09_English_1/ \
   -index lucene-index.cw09b.cnt -threads 32 -optimize
 ```
 
-The directory `/path/to/cw09b/` should be the root directory of ClueWeb09B collection, i.e., `ls /path/to/cw09b/` should bring up a bunch of subdirectories, `en0000` to `enwp03`.
+The directory `/path/to/cw09/ClueWeb09_English_1` should be the root directory of ClueWeb09B collection, i.e., `ls /path/to/cw09/ClueWeb09_English_1` should bring up a bunch of subdirectories, `en0000` to `enwp03`.
 
 After indexing is done, you should be able to perform a retrieval run:
 
 ```
-sh target/appassembler/bin/SearchClueWeb09b src/main/resources/topics-and-qrels/topics.web.151-200.txt \
-  run.web.151-200.txt lucene-index.cw09b.cnt
+sh target/appassembler/bin/SearchWebCollection -collection CW09 -index lucene-index.cw09b.cnt
+  -topics src/main/resources/topics-and-qrels/topics.web.51-100.txt -output run.web.51-100.txt -bm25
 ```
 
-Then you can evaluate the runs:
+You should then be able to evaluate using `trec_eval`, as with Gov2 above. With the topics and qrels in `src/main/resources/topics-and-qrels/`, you should be able to replicate the following results:
+
+                                                                              | MAP    |  P30
+------------------------------------------------------------------------------|--------|-------
+[TREC 2010 Web Track: Topics 51-100](http://trec.nist.gov/data/web10.html)    | 0.1091 | 0.2667
+[TREC 2011 Web Track: Topics 101-150](http://trec.nist.gov/data/web2011.html) | 0.1095 | 0.2540
+[TREC 2012 Web Track: Topics 151-200](http://trec.nist.gov/data/web2012.html) | 0.1072 | 0.2187
+
+
+### Experiments on ClueWeb09 (Category A)
 
 ```
-trec_eval src/main/resources/topics-and-qrels/qrels.web.151-200.txt run.web.151-200.txt
+sh target/appassembler/bin/IndexWebCollection -collection CW09 -input /path/to/cw09/ \
+  -index lucene-index.cw09a.cnt -threads 32 -optimize 2> emptyDocIDs.txt 1> recordCounts.txt
 ```
 
-To record search/running times:
+The directory `/path/to/cw09/` should be the root directory of ClueWeb09 collection, i.e., `/path/to/cw09/` should bring up a bunch of subdirectories, `ClueWeb09_English_1` to `ClueWeb09_English_10`.
+
+After indexing is done, you should be able to compare record counts file with the one comes from the dataset.
+`emptyDocIDs.txt` file contains the documents that are not indexed. [JSoup](http://jsoup.org) produces empty string, probably they are not valid HTMLs.
+If you count it with `wc -l` and add it the number that is reported from the indexer, you should obtain the total number of documents for the dataset.
+
+### Experiments on ClueWeb12-B13
 
 ```
-sh target/appassembler/bin/Time lucene-index.cw09b.cnt
+sh target/appassembler/bin/IndexWebCollection -collection CW12 -input /path/to/cw12b/ \
+  -index lucene-index.cw12b.cnt -threads 32 -optimize 2> emptyDocIDs.txt 1> recordCounts.txt
 ```
+
+The directory `/path/to/cw12b/` should be the root directory of ClueWeb12-B13 collection, i.e., `/path/to/cw12b/` should bring up a bunch of subdirectories, `ClueWeb12_00` to `ClueWeb12_18`.
+
+After indexing is done, you should be able to perform a retrieval run:
+
+```
+sh target/appassembler/bin/SearchWebCollection -collection CW12 -index lucene-index.cw12b.cnt
+  -topics src/main/resources/topics-and-qrels/topics.web.201-250.txt -output run.web.201-250.txt -bm25
+```
+
+You should then be able to evaluate using `trec_eval`, as with Gov2 and ClueWeb09 above. With the topics and qrels in `src/main/resources/topics-and-qrels/`, you should be able to replicate the following results:
+
+                                                                               | MAP    |  P30
+-------------------------------------------------------------------------------|--------|-------
+[TREC 2013 Web Track: Topics 201-250](http://trec.nist.gov/data/web2013.html)  | 0.0458 | 0.2000
+[TREC 2014 Web Track: Topics 251-300](http://trec.nist.gov/data/web2014.html)  | 0.0220 | 0.1307
 
 ### Experiments on Tweets2011
 
@@ -74,21 +115,16 @@ sh target/appassembler/bin/IndexTweets -collection /path/to/tweets2011-collectio
 Running topics from TREC 2011 and 2012:
 
 ```
-sh target/appassembler/bin/SearchTweets -index tweets2011-index/ -num_results 1000 \
- -queries src/main/resources/topics-and-qrels/topics.microblog2011.txt > run.ql.2011.txt
-
-sh target/appassembler/bin/SearchTweets -index tweets2011-index/ -num_results 1000 \
- -queries src/main/resources/topics-and-qrels/topics.microblog2012.txt > run.ql.2012.txt
+sh target/appassembler/bin/SearchTweets -index tweets2011-index/ \
+ -topics src/main/resources/topics-and-qrels/topics.microblog2011.txt -output run.mb2011.ql.txt -ql
 ```
-
-Add `-rm3` option for query expansion with relevance models (RM3).
 
 For evaluation:
 
 ```
-eval/trec_eval.9.0/trec_eval src/main/resources/topics-and-qrels/qrels.microblog2011.txt run.ql.2011.txt
-eval/trec_eval.9.0/trec_eval src/main/resources/topics-and-qrels/qrels.microblog2012.txt run.ql.2012.txt
+eval/trec_eval.9.0/trec_eval src/main/resources/topics-and-qrels/qrels.microblog2011.txt run.mb2011.ql.txt
 ```
+
 
 ### Twitter (Near) Real-Time Search
 
